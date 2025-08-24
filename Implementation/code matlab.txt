@@ -1,0 +1,108 @@
+leakage = [];
+L = 0;
+N = 0;
+datasets = {'E:\Pipeline Dataset\2022 test data\dataset3'};  % folder paths for each dataset (training)
+fs = 1000000;  % Sampling frequency
+t = linspace(1, 360, 360);  % Time vector (you may adjust as needed)
+
+amp1 = [];
+amp2 = [];
+amp3 = [];
+
+for i = 1:length(datasets)
+    % Use the 'dir' function to list the folders in the dataset directory
+    folderInfo = dir(fullfile(datasets{i}, ''));
+    % Keep only the directories, ignoring files
+    folders = folderInfo([folderInfo.isdir]);
+    % Remove the '.' and '..' directories
+    folders = folders(~ismember({folders.name}, {'.', '..'}));
+    
+    for j = 1:length(folders)
+        % List the files in the current folder
+        channelInfo = dir(fullfile(datasets{i}, folders(j).name, '*.dat'));
+        channels = {channelInfo.name};
+        signals = [];
+        
+        for k = 1:length(channels)
+            fp = fopen(fullfile(datasets{i}, folders(j).name, channels{k}), 'rb');
+            signal = fread(fp, 'double');  % Read signal for each channel
+            signals = [signals, signal];  % Stack all signals of the channels into a matrix
+            fclose(fp);
+        end
+
+        s1 = signals(:, 1);  % Channel 1 signal
+        s1 = s1 - mean(s1);  % Remove DC component (mean)
+        s2 = signals(:, 3);  % Channel 3 signal
+        s2 = s2 - mean(s2);  % Remove DC component (mean)
+
+        cross = xcorr(s1, s2);  % Cross-correlation between s1 and s2
+        amplitude = max(abs(cross));  % Maximum amplitude of cross-correlation
+
+        % Assign amplitude to the appropriate dataset variable
+        if strcmp(datasets{i}, 'dataset1')
+            amp1 = [amp1, amplitude];
+        elseif strcmp(datasets{i}, 'dataset2')
+            amp2 = [amp2, amplitude];
+        elseif strcmp(datasets{i}, 'evaulation dataset')
+            amp3 = [amp3, amplitude];
+        end
+
+        % Leakage detection based on the cross-correlation amplitude
+        if amplitude > 0.8
+            leakage = 'L';
+        else
+            leakage = 'N';
+        end
+
+        % Continuous Wavelet Transform (CWT)
+        [wt, f] = cwt(s1, 'amor', fs, 'FrequencyLimits', [1 500000]);  % Adjust FrequencyLimits if needed
+
+        % Plot CWT with logarithmic frequency axis
+        figure('Units', 'normalized', 'OuterPosition', [0 0 1 1]);  % Create a full-screen figure
+        imagesc(t, log10(f), abs(wt));  % Use logarithmic scale for frequency
+        set(gca, 'YDir', 'normal');  % Correct the direction of the y-axis
+        colorbar;
+        xlabel('Time (s)');
+        ylabel('Log10(Frequency (Hz))');
+        title('Logarithmic CWT Scalogram');
+
+        % Remove unnecessary white spaces and enlarge the plot to fit the whole figure
+        ax = gca;
+        ax.Position = [0 0 1 1];  % Stretch axes to fill the figure
+        axis tight;
+
+        % Generate the image filename with appropriate numbering
+        imgFilename = strcat('', num2str(i), '_', num2str(j), '.png');
+
+        % Determine the image folder based on leakage classification
+        if leakage == 'N'
+            imgFolderPath = fullfile('E:\2 Paper\dataset3\Non Leak');
+            N = N + 1;
+        elseif leakage == 'L'
+            imgFolderPath = fullfile('E:\2 Paper\dataset3\Leak');
+            L = L + 1;
+        end
+
+        % Check if directory exists, if not, create it
+        if ~exist(imgFolderPath, 'dir')
+            mkdir(imgFolderPath);  % Create the directory if it does not exist
+        end
+
+        % Save the CWT scalogram image
+        saveas(gcf, fullfile(imgFolderPath, imgFilename));
+
+        % Load the saved image for displaying (optional)
+        B = imread(fullfile(imgFolderPath, imgFilename));
+
+        % Display and save the original image in leak/non-leak folder
+        figure;
+        imshow(B);
+
+        % Generate the new filename for the final saved image
+        imgFilenameNL = strcat('', num2str(L), '.png');
+        saveas(gcf, fullfile(imgFolderPath, imgFilenameNL));
+
+        % Close the current figures
+        close all;
+    end
+end
