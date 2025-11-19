@@ -1,0 +1,18 @@
+open your data in excel file
+replace the disease sample with 1 and healthy sample with 0
+if gene official symbols are not given then first convert gene ids into gene symbol
+write the word (outcomes) in the first row of gene column
+now save this excel file in the form of txt.file 
+
+
+Download the Jupyter or VS code on your systems
+when one of them is downloaded on your system open it
+I will send you the codes.
+you will run this code and txt.file in jupyter or VS code whatever you have installed
+By running these files you will get transpose of thes data in the form of various txt.files
+these txt files that you wll get after running the code are your output actually 
+
+
+
+open these txt file one by one in the form of excel file and save them in excel files
+copy outcomes column from the first column of every file and paste it in the last column of file.
